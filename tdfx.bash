@@ -1,8 +1,8 @@
 #/bin/bash
 
+# TODO: iterating over files instead of cat them all in the same tme.
+# TODO: add CLI parser (ignore, fixme, todo, ...)
 # TODO: better display
-# TODO: ignore some files / directories
-# TODO: differ fixme & todo
 
 # $1 <- error msg
 # $2 <- code return
@@ -11,16 +11,23 @@ function _error() {
   exit $2
 }
 
-
-
-GREP=$(which grep)
-
-if [[ -z $GREP ]]; then
-  _error "grep is not installed." 1
+CAT=$(which cat)
+SED=$(which sed)
+if [[ -z $CAT ]]; then
+  _error "cat is not installed." 1
+fi
+if [[ -z $SED ]]; then
+  _error "sed is not installed." 1
 fi
 
+USAGE=<<-EOF
+  TDFX helper.
+  WIP
+EOF
+
 function _tdfx() {
-  $GREP -Ern "FIXME|TODO" $*
+  # FIXME: iterate here.
+  $CAT -n $* | $SED '/\/\\*/,/\\*\//{H;d;};x;/TODO/!d'
 }
 
 _tdfx $*
