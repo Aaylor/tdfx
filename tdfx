@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# TODO: if give a folder, run it into every files in folder
+# TODO: write a separator between each todo/fixme found in a file
+# TODO: add ignore/recursive to cli parser
+# TODO: better display
+
+OPTIND=1 # Reset getopts position.
+
+# $1 <- error msg
+# $2 <- code return
+function _error() {
+  echo $1 >&2
+  exit $2
+}
+
+CAT=$(which cat)
+SED=$(which sed)
+if [[ -z $CAT ]]; then
+  _error "cat is not installed." 1
+fi
+if [[ -z $SED ]]; then
+  _error "sed is not installed." 1
+fi
+
+PATTERN="TODO|FIXME"
+
+USAGE=$(cat <<-EOF
+tdfx is a little script use to find simply where fixmes and todos exists in
+a file or a project folder.
+
+  -h : display this help
+  -f : force to find only fixmes
+  -t : force to find only todos
+EOF)
+
+
+
+function _tdfx() {
+  for file in $*; do
+    echo "$file:"
+    $CAT -n $file | $SED -E "/\/\\*/,/\\*\//{H;d;};x;/$PATTERN/!d"
+  done
+}
+
+
+
+
+# CLI PARSER
+while getopts "hft" opt; do
+  case "$opt" in
+    h|\?)
+      echo "$USAGE"
+      exit 0
+    ;;
+    f)
+      PATTERN="FIXME"
+    ;;
+    t)
+      PATTERN="TODO"
+    ;;
+  esac
+done
+shift $((OPTIND - 1))
+test "$1" = "--" && shift
+
+
+_tdfx $*
