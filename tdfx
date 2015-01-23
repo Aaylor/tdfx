@@ -11,31 +11,38 @@ function _error() {
 
 PATTERN="TODO|FIXME|XXX"
 
+MAX_DEPTH=1
+
 USAGE=$(cat <<-EOF
 tdfx is a little script use to find simply where fixmes and todos exists in
 a file or a project folder.
 
-  -h : display this help
   -f : force to find only fixmes
+  -h : display this help
+  -r : recursion into subfolders
   -t : force to find only todos
   -x : force to find only xxxs
 EOF)
 
 
 
+# $1     <- depth
+# ${*:2} <- file and/or folders
 function _tdfx() {
-    local CAT=$(which cat)
-    local SED=$(which sed)
-    if [[ -z $CAT ]]; then
-      _error "cat is not installed." 1
-    fi
-    if [[ -z $SED ]]; then
-      _error "sed is not installed." 1
-    fi
+  local CAT=$(which cat)
+  local SED=$(which sed)
+  if [[ -z $CAT ]]; then
+    _error "cat is not installed." 1
+  fi
+  if [[ -z $SED ]]; then
+    _error "sed is not installed." 1
+  fi
 
-  for file in $*; do
+  local depth=$1
+
+  for file in ${*:2}; do
     if [[ -d "$file" ]]; then   # directory
-      _tdfx "$(echo "$file"/*)"
+      [[ depth > 0 ]] && _tdfx $(( depth - 1 )) "$(echo "$file"/*)"
     else                        # other files
       echo -e "\n$file:"
 
@@ -75,4 +82,4 @@ shift $((OPTIND - 1))
 test "$1" = "--" && shift
 
 
-_tdfx $*
+_tdfx $MAX_DEPTH "$*"
