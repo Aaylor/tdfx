@@ -11,17 +11,20 @@ function _error() {
 
 PATTERN="TODO|FIXME|XXX"
 
-MAX_DEPTH=1
+RECURSION=0
+RECURSION_LIMIT=
+
 
 USAGE=$(cat <<-EOF
 tdfx is a little script use to find simply where fixmes and todos exists in
 a file or a project folder.
 
-  -f : force to find only fixmes
-  -h : display this help
-  -r : recursion into subfolders
-  -t : force to find only todos
-  -x : force to find only xxxs
+  -f       : force to find only fixmes
+  -h       : display this help
+  -m depth : change the max depth (depth has to be a positive integer)
+  -r       : allow folder recursion
+  -t       : force to find only todos
+  -x       : force to find only xxxs
 EOF)
 
 
@@ -41,28 +44,36 @@ function _tdfx() {
   local depth=$1
 
   for file in ${*:2}; do
-    if [[ -d "$file" ]]; then   # directory
-      [[ depth > 0 ]] && _tdfx $(( depth - 1 )) "$(echo "$file"/*)"
-    else                        # other files
+    if [[ -d "$file" ]]; then      # directory
+      if [[ ("$RECURSION" = "1" \
+              && ( -z $RECURSION_LIMIT || $depth < $RECURSION_LIMIT)) \
+              || $depth < 1 ]]; then
+
+        _tdfx $(( depth + 1 )) "$(echo "$file"/*)"
+      fi
+    elif [[ -f "$file" ]]; then    # regular files
       echo -e "\n$file:"
 
       $CAT -n "$file" | grep -E "$PATTERN"
       #$CAT -n "$file" | $SED -E '\%/\\*%,\%\\*/%{H;d;};x;/'$PATTERN'/!d;a \
         #-------\
       #'
+    else                           # other files
+      echo "$file: not supported."
     fi
   done
 }
 
 
-
-
 # CLI PARSER
-while getopts "hftxr" opt; do
+while getopts "hftxrm:" opt; do
   case "$opt" in
     h|\?)
       echo "$USAGE"
       exit 0
+    ;;
+    :)
+      _error "-$OPTARG require an argument."
     ;;
     f)
       PATTERN="FIXME"
@@ -74,12 +85,22 @@ while getopts "hftxr" opt; do
       PATTERN="XXX"
     ;;
     r)
-      RECURSIVE=1
+      RECURSION=1
+    ;;
+    m)
+      re='^[0-9]+$'
+      if [[ $OPTARG =~ $re ]]; then
+        RECURSION_LIMIT="$OPTARG"
+      else
+        _error "Option -m require a positive integer argument."
+      fi
     ;;
   esac
 done
 shift $((OPTIND - 1))
 test "$1" = "--" && shift
 
+[[ "$#" = "0" ]] && echo "$USAGE" && exit 0
 
-_tdfx $MAX_DEPTH "$*"
+
+_tdfx 0 "$*"
