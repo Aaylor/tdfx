@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# TODO: if give a folder, run it into every files in folder
-# TODO: write a separator between each todo/fixme found in a file
-# TODO: add ignore/recursive to cli parser
-# TODO: better display
-
 OPTIND=1 # Reset getopts position.
 
 # $1 <- error msg
@@ -14,16 +9,7 @@ function _error() {
   exit $2
 }
 
-CAT=$(which cat)
-SED=$(which sed)
-if [[ -z $CAT ]]; then
-  _error "cat is not installed." 1
-fi
-if [[ -z $SED ]]; then
-  _error "sed is not installed." 1
-fi
-
-PATTERN="TODO|FIXME"
+PATTERN="TODO|FIXME|XXX"
 
 USAGE=$(cat <<-EOF
 tdfx is a little script use to find simply where fixmes and todos exists in
@@ -32,14 +18,32 @@ a file or a project folder.
   -h : display this help
   -f : force to find only fixmes
   -t : force to find only todos
+  -x : force to find only xxxs
 EOF)
 
 
 
 function _tdfx() {
+    local CAT=$(which cat)
+    local SED=$(which sed)
+    if [[ -z $CAT ]]; then
+      _error "cat is not installed." 1
+    fi
+    if [[ -z $SED ]]; then
+      _error "sed is not installed." 1
+    fi
+
   for file in $*; do
-    echo "$file:"
-    $CAT -n $file | $SED -E "/\/\\*/,/\\*\//{H;d;};x;/$PATTERN/!d"
+    if [[ -d "$file" ]]; then   # directory
+      _tdfx "$(echo "$file"/*)"
+    else                        # other files
+      echo -e "\n$file:"
+
+      $CAT -n "$file" | grep -E "$PATTERN"
+      #$CAT -n "$file" | $SED -E '\%/\\*%,\%\\*/%{H;d;};x;/'$PATTERN'/!d;a \
+        #-------\
+      #'
+    fi
   done
 }
 
@@ -47,7 +51,7 @@ function _tdfx() {
 
 
 # CLI PARSER
-while getopts "hft" opt; do
+while getopts "hftxr" opt; do
   case "$opt" in
     h|\?)
       echo "$USAGE"
@@ -58,6 +62,12 @@ while getopts "hft" opt; do
     ;;
     t)
       PATTERN="TODO"
+    ;;
+    x)
+      PATTERN="XXX"
+    ;;
+    r)
+      RECURSIVE=1
     ;;
   esac
 done
