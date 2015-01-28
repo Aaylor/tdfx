@@ -14,7 +14,6 @@ PATTERN="TODO|FIXME|XXX"
 RECURSION=0
 RECURSION_LIMIT=
 
-
 USAGE=$(cat <<-EOF
 tdfx is a little script use to find simply where fixmes and todos exists in
 a file or a project folder.
@@ -26,7 +25,6 @@ a file or a project folder.
   -t       : force to find only todos
   -x       : force to find only xxxs
 EOF)
-
 
 
 # $1     <- depth
@@ -55,9 +53,6 @@ function _tdfx() {
       echo -e "\n$file:"
 
       $CAT -n "$file" | grep -E "$PATTERN"
-      #$CAT -n "$file" | $SED -E '\%/\\*%,\%\\*/%{H;d;};x;/'$PATTERN'/!d;a \
-        #-------\
-      #'
     else                           # other files
       echo "$file: not supported."
     fi
