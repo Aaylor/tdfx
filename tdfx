@@ -31,11 +31,11 @@ EOF)
 # ${*:2} <- file and/or folders
 function _tdfx() {
   local CAT=$(which cat)
-  local SED=$(which sed)
+  local GREP=$(which grep)
   if [[ -z $CAT ]]; then
     _error "cat is not installed." 1
   fi
-  if [[ -z $SED ]]; then
+  if [[ -z $GREP ]]; then
     _error "sed is not installed." 1
   fi
 
@@ -50,9 +50,8 @@ function _tdfx() {
         _tdfx $(( depth + 1 )) "$(echo "$file"/*)"
       fi
     elif [[ -f "$file" ]]; then    # regular files
-      echo -e "\n$file:"
-
-      $CAT -n "$file" | grep -E "$PATTERN"
+      output="$($CAT -n "$file" | $GREP -E "$PATTERN")"
+      [[ ! -z $output ]] && echo -e "\n$file:" && echo -e "$output"
     else                           # other files
       echo "$file: not supported."
     fi
@@ -63,25 +62,12 @@ function _tdfx() {
 # CLI PARSER
 while getopts "hftxrm:" opt; do
   case "$opt" in
-    h|\?)
-      echo "$USAGE"
-      exit 0
-    ;;
-    :)
-      _error "-$OPTARG require an argument."
-    ;;
-    f)
-      PATTERN="FIXME"
-    ;;
-    t)
-      PATTERN="TODO"
-    ;;
-    x)
-      PATTERN="XXX"
-    ;;
-    r)
-      RECURSION=1
-    ;;
+    h|\?) echo "$USAGE"; exit 0               ;;
+    :) _error "-$OPTARG require an argument." ;;
+    f) PATTERN="FIXME"                        ;;
+    t) PATTERN="TODO"                         ;;
+    x) PATTERN="XXX"                          ;;
+    r) RECURSION=1                            ;;
     m)
       re='^[0-9]+$'
       if [[ $OPTARG =~ $re ]]; then
@@ -96,6 +82,5 @@ shift $((OPTIND - 1))
 test "$1" = "--" && shift
 
 [[ "$#" = "0" ]] && echo "$USAGE" && exit 0
-
 
 _tdfx 0 "$*"
