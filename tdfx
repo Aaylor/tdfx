@@ -1,12 +1,9 @@
 #!/bin/bash
 
-OPTIND=1 # Reset getopts position.
-
 # $1 <- error msg
-# $2 <- code return
-function _error() {
+error() {
   echo $1 >&2
-  exit $2
+  exit 1
 }
 
 PATTERN="TODO|FIXME|XXX"
@@ -14,7 +11,8 @@ PATTERN="TODO|FIXME|XXX"
 RECURSION=0
 RECURSION_LIMIT=
 
-USAGE=$(cat <<-EOF
+usage() {
+    cat <<EOF
 tdfx is a little script use to find simply where fixmes and todos exists in
 a file or a project folder.
 
@@ -24,33 +22,23 @@ a file or a project folder.
   -r       : allow folder recursion
   -t       : force to find only todos
   -x       : force to find only xxxs
-EOF)
-
+EOF
+}
 
 # $1     <- depth
 # ${*:2} <- file and/or folders
-function _tdfx() {
-  local CAT=$(which cat)
-  local GREP=$(which grep)
-  if [[ -z $CAT ]]; then
-    _error "cat is not installed." 1
-  fi
-  if [[ -z $GREP ]]; then
-    _error "sed is not installed." 1
-  fi
-
+tdfx() {
   local depth=$1
-
   for file in ${*:2}; do
     if [[ -d "$file" ]]; then      # directory
       if [[ ("$RECURSION" = "1" \
               && ( -z $RECURSION_LIMIT || $depth < $RECURSION_LIMIT)) \
               || $depth < 1 ]]; then
 
-        _tdfx $(( depth + 1 )) "$(echo "$file"/*)"
+        tdfx $(( depth + 1 )) "$(echo "$file"/*)"
       fi
     elif [[ -f "$file" ]]; then    # regular files
-      output="$($CAT -n "$file" | $GREP -E "$PATTERN")"
+      output="$(cat -n "$file" | grep -E "([^a-zA-Z]|^$)($PATTERN)([^a-zA-Z]|^$)")"
       [[ ! -z $output ]] && echo -e "\n$file:" && echo -e "$output"
     else                           # other files
       echo "$file: not supported."
@@ -58,29 +46,28 @@ function _tdfx() {
   done
 }
 
-
 # CLI PARSER
+OPTIND=1 # Reset getopts position.
 while getopts "hftxrm:" opt; do
   case "$opt" in
-    h|\?) echo "$USAGE"; exit 0               ;;
-    :) _error "-$OPTARG require an argument." ;;
-    f) PATTERN="FIXME"                        ;;
-    t) PATTERN="TODO"                         ;;
-    x) PATTERN="XXX"                          ;;
-    r) RECURSION=1                            ;;
-    m)
-      re='^[0-9]+$'
-      if [[ $OPTARG =~ $re ]]; then
-        RECURSION_LIMIT="$OPTARG"
-      else
-        _error "Option -m require a positive integer argument."
-      fi
-    ;;
+      h|\?) usage; exit 0                       ;;
+      :) error "-$OPTARG require an argument."  ;;
+      f) PATTERN="FIXME"                        ;;
+      t) PATTERN="TODO"                         ;;
+      x) PATTERN="XXX"                          ;;
+      r) RECURSION=1                            ;;
+      m) re='^[0-9]+$'
+         if [[ $OPTARG =~ $re ]]; then
+             RECURSION_LIMIT="$OPTARG"
+         else
+             error "Option -m require a positive integer argument."
+         fi
+         ;;
   esac
 done
 shift $((OPTIND - 1))
 test "$1" = "--" && shift
 
-[[ "$#" = "0" ]] && echo "$USAGE" && exit 0
+[[ "$#" = "0" ]] && usage && exit 0
 
-_tdfx 0 "$*"
+tdfx 0 "$*"
